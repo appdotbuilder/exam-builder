@@ -1,17 +1,35 @@
+import { db } from '../db';
+import { questionsTable, examsTable } from '../db/schema';
 import { type CreateQuestionInput, type Question } from '../schema';
+import { eq } from 'drizzle-orm';
 
 export async function createQuestion(input: CreateQuestionInput): Promise<Question> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is creating a new question for an exam.
-    // It should validate that the exam exists and create the question with the provided details.
-    // The order_index determines the position of the question in the exam.
-    return Promise.resolve({
-        id: 1, // Placeholder ID
+  try {
+    // Validate that the exam exists
+    const exam = await db.select()
+      .from(examsTable)
+      .where(eq(examsTable.id, input.exam_id))
+      .execute();
+
+    if (exam.length === 0) {
+      throw new Error(`Exam with id ${input.exam_id} does not exist`);
+    }
+
+    // Insert the question
+    const result = await db.insert(questionsTable)
+      .values({
         exam_id: input.exam_id,
         type: input.type,
         question_text: input.question_text,
         points: input.points,
-        order_index: input.order_index,
-        created_at: new Date()
-    } as Question);
+        order_index: input.order_index
+      })
+      .returning()
+      .execute();
+
+    return result[0];
+  } catch (error) {
+    console.error('Question creation failed:', error);
+    throw error;
+  }
 }
